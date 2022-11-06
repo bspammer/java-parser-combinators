@@ -2,11 +2,11 @@ package org.parsercombinators.parsers;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.parsercombinators.data.Failure;
+import org.parsercombinators.data.result.Failure;
 import org.parsercombinators.data.Pair;
 import org.parsercombinators.data.Parser;
-import org.parsercombinators.data.Result;
-import org.parsercombinators.data.Success;
+import org.parsercombinators.data.result.Result;
+import org.parsercombinators.data.result.Success;
 
 import java.util.List;
 import java.util.stream.Stream;

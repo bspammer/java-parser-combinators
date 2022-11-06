@@ -1,10 +1,10 @@
 package org.parsercombinators.parsers;
 
-import org.parsercombinators.data.Failure;
+import org.parsercombinators.data.result.Failure;
 import org.parsercombinators.data.Pair;
 import org.parsercombinators.data.Parser;
-import org.parsercombinators.data.Result;
-import org.parsercombinators.data.Success;
+import org.parsercombinators.data.result.Result;
+import org.parsercombinators.data.result.Success;
 import org.parsercombinators.utils.Utils;
 
 import java.util.ArrayList;
