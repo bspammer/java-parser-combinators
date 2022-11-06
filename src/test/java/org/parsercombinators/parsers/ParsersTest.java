@@ -3,6 +3,7 @@ package org.parsercombinators.parsers;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.parsercombinators.data.Failure;
+import org.parsercombinators.data.Pair;
 import org.parsercombinators.data.Parser;
 import org.parsercombinators.data.Result;
 import org.parsercombinators.data.Success;
@@ -12,9 +13,22 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.parsercombinators.parsers.Parsers.and;
+import static org.parsercombinators.parsers.Parsers.anyCharacterFrom;
+import static org.parsercombinators.parsers.Parsers.anyOf;
+import static org.parsercombinators.parsers.Parsers.character;
+import static org.parsercombinators.parsers.Parsers.concat;
+import static org.parsercombinators.parsers.Parsers.concatEmitPair;
 import static org.parsercombinators.parsers.Parsers.many;
 import static org.parsercombinators.parsers.Parsers.many1;
-import static org.parsercombinators.parsers.Parsers.character;
+import static org.parsercombinators.parsers.Parsers.map;
+import static org.parsercombinators.parsers.Parsers.nTimes;
+import static org.parsercombinators.parsers.Parsers.noEmitLeft;
+import static org.parsercombinators.parsers.Parsers.noEmitRight;
+import static org.parsercombinators.parsers.Parsers.noEmitSurrounding;
+import static org.parsercombinators.parsers.Parsers.or;
+import static org.parsercombinators.parsers.Parsers.string;
+import static org.parsercombinators.parsers.Parsers.transpose;
 
 class ParsersTest {
 
@@ -23,12 +37,112 @@ class ParsersTest {
         Parser<T> parser,
         String input,
         Result<T> expectedResult
-    ) {
-
-    }
+    ) {}
 
     public static Stream<TestCase<?>> tests() {
         return Stream.of(
+            new TestCase<>(
+                "concatCharacters",
+                concat(character('a'), character('b')),
+                "abaaa",
+                new Success<>('b', "aaa")
+            ),
+            new TestCase<>(
+                "concatCharactersFailure",
+                concat(character('a'), character('b')),
+                "a",
+                new Failure<>("Expected 'b' but got empty input")
+            ),
+            new TestCase<>(
+                "concatEmitPairCharacters",
+                concatEmitPair(character('a'), character('b')),
+                "abaaa",
+                new Success<>(new Pair<>('a', 'b'), "aaa")
+            ),
+            new TestCase<>(
+                "concatEmitPairCharactersFailure",
+                concatEmitPair(character('a'), character('b')),
+                "a",
+                new Failure<>("Expected 'b' but got empty input")
+            ),
+            new TestCase<>(
+                "orCharactersA",
+                or(character('a'), character('b')),
+                "abbb",
+                new Success<>('a', "bbb")
+            ),
+            new TestCase<>(
+                "orCharactersB",
+                or(character('a'), character('b')),
+                "baaa",
+                new Success<>('b', "aaa")
+            ),
+            new TestCase<>(
+                "orCharactersFailure",
+                or(character('a'), character('b')),
+                "cccc",
+                new Failure<>("Expected 'b' but got 'c'")
+            ),
+            new TestCase<>(
+                "andCharacters",
+                and(character('a'), character('a')),
+                "abbb",
+                new Success<>('a', "bbb")
+            ),
+            new TestCase<>(
+                "andCharactersFailure",
+                and(character('a'), character('b')),
+                "aaaa",
+                new Failure<>("Expected 'b' but got 'a'")
+            ),
+            new TestCase<>(
+                "anyOfCharactersA",
+                anyOf(List.of(character('a'), character('b'))),
+                "abbb",
+                new Success<>('a', "bbb")
+            ),
+            new TestCase<>(
+                "anyOfCharactersB",
+                anyOf(List.of(character('a'), character('b'))),
+                "baaa",
+                new Success<>('b', "aaa")
+            ),
+            new TestCase<>(
+                "anyOfCharactersFailure",
+                anyOf(List.of(character('a'), character('b'))),
+                "caaa",
+                new Failure<>("Expected 'b' but got 'c'")
+            ),
+            new TestCase<>(
+                "transposeCharacters",
+                transpose(List.of(character('a'), character('b'))),
+                "abaa",
+                new Success<>(List.of('a', 'b'), "aa")
+            ),
+            new TestCase<>(
+                "transposeCharactersFailure",
+                transpose(List.of(character('a'), character('b'))),
+                "acaa",
+                new Failure<>("Expected 'b' but got 'c'")
+            ),
+            new TestCase<>(
+                "transposeCharactersEmptyFailure",
+                transpose(List.of(character('a'), character('b'))),
+                "",
+                new Failure<>("Expected 'a' but got empty input")
+            ),
+            new TestCase<>(
+                "mapCharactersToNumeric",
+                map(character('a'), Character::getNumericValue),
+                "abbb",
+                new Success<>(10, "bbb")
+            ),
+            new TestCase<>(
+                "mapCharactersToNumericFailure",
+                map(character('a'), Character::getNumericValue),
+                "bbbb",
+                new Failure<>("Expected 'a' but got 'b'")
+            ),
             new TestCase<>(
             "manyCharactersAll",
                 many(character('a')),
@@ -60,22 +174,118 @@ class ParsersTest {
                 new Success<>(List.of('a', 'a', 'a'), "bb")
             ),
             new TestCase<>(
-                "many1CharactersEmpty",
+                "many1CharactersEmptyFailure",
                 many1(character('a')),
                 "",
-                new Failure<>("Expecting a but got something else")
+                new Failure<>("Expected 'a' but got empty input")
             ),
             new TestCase<>(
-                "singleCharacterSuccess",
+                "nTimesCharacters",
+                nTimes(character('a'), 5),
+                "aaaaabb",
+                new Success<>('a', "bb")
+            ),
+            new TestCase<>(
+                "nTimesCharactersShortFailure",
+                nTimes(character('a'), 5),
+                "aaa",
+                new Failure<>("Expected 'a' but got empty input")
+            ),
+            new TestCase<>(
+                "nTimesCharactersWrongCharacterFailure",
+                nTimes(character('a'), 5),
+                "aaabbb",
+                new Failure<>("Expected 'a' but got 'b'")
+            ),
+            new TestCase<>(
+                "noEmitLeftCharacters",
+                noEmitLeft(character('b'), character('a')),
+                "ababab",
+                new Success<>('b', "abab")
+            ),
+            new TestCase<>(
+                "noEmitLeftCharactersFailure",
+                noEmitLeft(character('b'), character('a')),
+                "cbabab",
+                new Failure<>("Expected 'a' but got 'c'")
+            ),
+            new TestCase<>(
+                "noEmitRightCharacters",
+                noEmitRight(character('a'), character('b')),
+                "ababab",
+                new Success<>('a', "abab")
+            ),
+            new TestCase<>(
+                "noEmitRightCharactersFailure",
+                noEmitRight(character('a'), character('b')),
+                "acabab",
+                new Failure<>("Expected 'b' but got 'c'")
+            ),
+            new TestCase<>(
+                "noEmitSurroundingCharacters",
+                noEmitSurrounding(character('a'), character('"')),
+                "\"a\"abab",
+                new Success<>('a', "abab")
+            ),
+            new TestCase<>(
+                "noEmitSurroundingCharactersFailure",
+                noEmitSurrounding(character('a'), character('"')),
+                "a\"abab",
+                new Failure<>("Expected '\"' but got 'a'")
+            ),
+            new TestCase<>(
+                "noEmitSurroundingOverloadCharacters",
+                noEmitSurrounding(character('a'), character('<'), character('>')),
+                "<a>abab",
+                new Success<>('a', "abab")
+            ),
+            new TestCase<>(
+                "noEmitSurroundingOverloadCharactersFailure",
+                noEmitSurrounding(character('a'), character('<'), character('>')),
+                ">a>abab",
+                new Failure<>("Expected '<' but got '>'")
+            ),
+            new TestCase<>(
+                "character",
                 character('a'),
                 "a",
                 new Success<>('a', "")
             ),
             new TestCase<>(
-                "singleCharacterFailure",
+                "characterFailure",
                 character('a'),
                 "b",
-                new Failure<>("Expecting a but got something else")
+                new Failure<>("Expected 'a' but got 'b'")
+            ),
+            new TestCase<>(
+                "anyCharacterFrom",
+                anyCharacterFrom(List.of('a', 'b', 'c')),
+                "caaaa",
+                new Success<>('c', "aaaa")
+            ),
+            new TestCase<>(
+                "anyCharacterFromFailure",
+                anyCharacterFrom(List.of('a', 'b', 'c')),
+                "daaaa",
+                new Failure<>("Expected 'c' but got 'd'")
+            ),
+            new TestCase<>(
+                "string",
+                string("ababab"),
+                "abababab",
+                new Success<>("ababab", "ab")
+            ),
+            new TestCase<>(
+                "stringEmpty",
+                string(""),
+                "abababab",
+                new Success<>("", "abababab")
+            ),
+            new TestCase<>(
+                "stringFailure",
+                string("ababab"),
+                "abcabcabc",
+                new Failure<>("Expected 'a' but got 'c'")
             )
         );
     }
@@ -84,7 +294,7 @@ class ParsersTest {
     @MethodSource("tests")
     <T> void runTests(final TestCase<T> testCase) {
         final Result<T> result = testCase.parser.parse(testCase.input);
-        assertEquals(result, testCase.expectedResult, testCase.testName);
+        assertEquals(testCase.expectedResult, result, testCase.testName);
     }
 
 }
