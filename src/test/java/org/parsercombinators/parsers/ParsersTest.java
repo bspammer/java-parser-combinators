@@ -30,6 +30,7 @@ import static org.parsercombinators.parsers.Parsers.nTimes;
 import static org.parsercombinators.parsers.Parsers.noEmitLeft;
 import static org.parsercombinators.parsers.Parsers.noEmitRight;
 import static org.parsercombinators.parsers.Parsers.noEmitSurrounding;
+import static org.parsercombinators.parsers.Parsers.notCharacter;
 import static org.parsercombinators.parsers.Parsers.optional;
 import static org.parsercombinators.parsers.Parsers.or;
 import static org.parsercombinators.parsers.Parsers.string;
@@ -280,6 +281,24 @@ class ParsersTest {
                 character('a'),
                 "b",
                 new Failure<>("Expected 'a' but got 'b'")
+            ),
+            new TestCase<>(
+                "notCharacter",
+                notCharacter('a'),
+                "bcdef",
+                new Success<>('b', "cdef")
+            ),
+            new TestCase<>(
+                "notCharacterFailure",
+                notCharacter('a'),
+                "abcde",
+                new Failure<>("Expected any character except 'a' but got it")
+            ),
+            new TestCase<>(
+                "notCharacterFailureEmpty",
+                notCharacter('a'),
+                "",
+                new Failure<>("Expected any character except 'a' but got empty input")
             ),
             new TestCase<>(
                 "characterAsString",

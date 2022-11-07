@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.nCopies;
+import static java.util.function.Predicate.not;
 
 public class Parsers {
 
@@ -181,6 +182,13 @@ public class Parsers {
         return characterSatisfies(expectedCharacter::equals,
             c -> "Expected '" + expectedCharacter + "' but got '" + c +"'",
             () -> "Expected '" + expectedCharacter + "' but got empty input"
+        );
+    }
+
+    public static Parser<Character> notCharacter(final Character excludedCharacter) {
+        return characterSatisfies(not(excludedCharacter::equals),
+            c -> "Expected any character except '" + excludedCharacter + "' but got it",
+            () -> "Expected any character except '" + excludedCharacter + "' but got empty input"
         );
     }
 
