@@ -9,6 +9,8 @@ import org.parsercombinators.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -72,6 +74,10 @@ public class Parsers {
             case Success<T> ignored -> parser2.parse(input);
             case Failure<T> failure -> failure;
         };
+    }
+
+    public static <T> Parser<Optional<T>> optional(final Parser<T> parser) {
+        return or(map(parser, Optional::of), pure(Optional.empty()));
     }
 
     public static <T> Parser<T> anyOf(final List<Parser<T>> parsers) {
@@ -178,10 +184,14 @@ public class Parsers {
         );
     }
 
-    public static Parser<Character> anyCharacterFrom(final List<Character> chars) {
-        return characterSatisfies(chars::contains,
-            c -> "Unexpected character '" + c + "', expected one of " + chars,
-            () -> "Expected one of " + chars + " but got empty input"
+    public static Parser<String> characterAsString(final Character expectedCharacter) {
+        return map(character(expectedCharacter), Objects::toString);
+    }
+
+    public static Parser<Character> anyCharacterFrom(final List<Character> characters) {
+        return characterSatisfies(characters::contains,
+            c -> "Unexpected character '" + c + "', expected one of " + characters,
+            () -> "Expected one of " + characters + " but got empty input"
         );
     }
 
@@ -202,6 +212,19 @@ public class Parsers {
             ),
             Utils::charsToString
         );
+    }
+
+    public static Parser<Integer> anyInteger() {
+        final List<Character> numerals = List.of('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+
+        final var signAndBody = concatEmitPair(
+            optional(character('-')),
+            or(characterAsString('0'), map(many1(anyCharacterFrom(numerals)), Utils::charsToString))
+        );
+        return map(signAndBody, pair -> {
+            final int integer = Integer.parseInt(pair.right());
+            return pair.left().map(ignored -> -integer).orElse(integer);
+        });
     }
 
     private static <T> Success<List<T>> parseZeroOrMore(final Parser<T> parser, final Success<T> success) {

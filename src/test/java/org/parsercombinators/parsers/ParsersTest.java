@@ -10,14 +10,17 @@ import org.parsercombinators.data.result.Success;
 import org.parsercombinators.utils.Utils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.parsercombinators.parsers.Parsers.and;
 import static org.parsercombinators.parsers.Parsers.anyCharacterFrom;
+import static org.parsercombinators.parsers.Parsers.anyInteger;
 import static org.parsercombinators.parsers.Parsers.anyOf;
 import static org.parsercombinators.parsers.Parsers.character;
+import static org.parsercombinators.parsers.Parsers.characterAsString;
 import static org.parsercombinators.parsers.Parsers.concat;
 import static org.parsercombinators.parsers.Parsers.concatEmitPair;
 import static org.parsercombinators.parsers.Parsers.many;
@@ -27,6 +30,7 @@ import static org.parsercombinators.parsers.Parsers.nTimes;
 import static org.parsercombinators.parsers.Parsers.noEmitLeft;
 import static org.parsercombinators.parsers.Parsers.noEmitRight;
 import static org.parsercombinators.parsers.Parsers.noEmitSurrounding;
+import static org.parsercombinators.parsers.Parsers.optional;
 import static org.parsercombinators.parsers.Parsers.or;
 import static org.parsercombinators.parsers.Parsers.string;
 import static org.parsercombinators.parsers.Parsers.transpose;
@@ -84,6 +88,24 @@ class ParsersTest {
                 or(character('a'), character('b')),
                 "cccc",
                 new Failure<>("Expected 'b' but got 'c'")
+            ),
+            new TestCase<>(
+                "optional",
+                optional(character('a')),
+                "abcd",
+                new Success<>(Optional.of('a'), "bcd")
+            ),
+            new TestCase<>(
+                "optionalEmpty",
+                optional(character('a')),
+                "",
+                new Success<>(Optional.empty(), "")
+            ),
+            new TestCase<>(
+                "optionalNoMatch",
+                optional(character('a')),
+                "bcde",
+                new Success<>(Optional.empty(), "bcde")
             ),
             new TestCase<>(
                 "andCharacters",
@@ -260,6 +282,18 @@ class ParsersTest {
                 new Failure<>("Expected 'a' but got 'b'")
             ),
             new TestCase<>(
+                "characterAsString",
+                characterAsString('a'),
+                "abab",
+                new Success<>("a", "bab")
+            ),
+            new TestCase<>(
+                "characterAsStringFailure",
+                characterAsString('a'),
+                "cbab",
+                new Failure<>("Expected 'a' but got 'c'")
+            ),
+            new TestCase<>(
                 "anyCharacterFrom",
                 anyCharacterFrom(List.of('a', 'b', 'c')),
                 "caaaa",
@@ -318,6 +352,30 @@ class ParsersTest {
                 map(many(whitespaceCharacter()), Utils::charsToString),
                 " \r\n\t\fab",
                 new Success<>(" \r\n\t\f", "ab")
+            ),
+            new TestCase<>(
+                "anyInteger",
+                anyInteger(),
+                "187654329abc",
+                new Success<>(187654329, "abc")
+            ),
+            new TestCase<>(
+                "anyIntegerTwice",
+                concatEmitPair(anyInteger(), anyInteger()),
+                "187654329-101010cde",
+                new Success<>(new Pair<>(187654329, -101010), "cde")
+            ),
+            new TestCase<>(
+                "anyIntegerLeadingZero",
+                anyInteger(),
+                "01234",
+                new Success<>(0, "1234")
+            ),
+            new TestCase<>(
+                "quotedInteger",
+                noEmitSurrounding(anyInteger(), character('"')),
+                "\"54321\"asdf",
+                new Success<>(54321, "asdf")
             )
         );
     }
