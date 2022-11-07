@@ -161,7 +161,7 @@ public class Parsers {
 
     public static Parser<Character> characterSatisfies(
         final Predicate<Character> matcher,
-        final Function<Character, String> errorMessageMapper,
+        final Function<Character, String> failureMessageMapper,
         final Supplier<String> emptyInputError
     ) {
         return input -> {
@@ -170,7 +170,7 @@ public class Parsers {
             }
             final char character = input.charAt(0);
             if (!matcher.test(character)) {
-                return new Failure<>(errorMessageMapper.apply(character));
+                return new Failure<>(failureMessageMapper.apply(character));
             }
 
             return new Success<>(character, input.substring(1));
@@ -190,14 +190,14 @@ public class Parsers {
 
     public static Parser<Character> anyCharacterFrom(final List<Character> characters) {
         return characterSatisfies(characters::contains,
-            c -> "Unexpected character '" + c + "', expected one of " + characters,
+            c -> "Expected one of " + characters + " but got '" + c + "'",
             () -> "Expected one of " + characters + " but got empty input"
         );
     }
 
     public static Parser<Character> whitespaceCharacter() {
         return characterSatisfies(Character::isWhitespace,
-            c -> "Expected '" + c + "' to be a whitespace character",
+            c -> "Expected a whitespace character but got '" + c + "'",
             () -> "Expected a whitespace character but got empty input"
         );
     }

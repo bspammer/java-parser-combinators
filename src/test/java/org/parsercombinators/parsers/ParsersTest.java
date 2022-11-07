@@ -303,7 +303,7 @@ class ParsersTest {
                 "anyCharacterFromFailure",
                 anyCharacterFrom(List.of('a', 'b', 'c')),
                 "daaaa",
-                new Failure<>("Unexpected character 'd', expected one of [a, b, c]")
+                new Failure<>("Expected one of [a, b, c] but got 'd'")
             ),
             new TestCase<>(
                 "anyCharacterFromEmptyFailure",
@@ -339,7 +339,7 @@ class ParsersTest {
                 "whitespaceCharacterFailure",
                 whitespaceCharacter(),
                 "ab",
-                new Failure<>("Expected 'a' to be a whitespace character")
+                new Failure<>("Expected a whitespace character but got 'a'")
             ),
             new TestCase<>(
                 "whitespaceCharacterFailureEmpty",
