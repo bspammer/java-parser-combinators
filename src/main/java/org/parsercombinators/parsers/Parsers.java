@@ -1,22 +1,47 @@
 package org.parsercombinators.parsers;
 
-import org.parsercombinators.data.result.Failure;
 import org.parsercombinators.data.Pair;
 import org.parsercombinators.data.Parser;
+import org.parsercombinators.data.result.Failure;
 import org.parsercombinators.data.result.Result;
 import org.parsercombinators.data.result.Success;
 import org.parsercombinators.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.nCopies;
 
 public class Parsers {
+
+    public static <T> Parser<T> pure(final T value) {
+        return input -> new Success<>(value, input);
+    }
+
+    public static <T, U> Parser<U> apply(final Parser<Function<T, U>> parserFunction, final Parser<T> parserValue) {
+        return map(concatEmitPair(parserFunction, parserValue), pair -> pair.left().apply(pair.right()));
+    }
+
+    public static <T, U> Parser<U> bind(final Parser<T> parser, final Function<T, Parser<U>> function) {
+        return input -> switch(parser.parse(input)) {
+            case Success<T> success -> function.apply(success.match()).parse(success.remaining());
+            case Failure<T> failure -> new Failure<>(failure.message());
+        };
+    }
+
+    public static <T, U> Function<Parser<T>, Parser<U>> lift(final Function<T, U> toLift) {
+        return parser1 -> apply(pure(toLift), parser1);
+    }
+
+    public static <T, U, V> BiFunction<Parser<T>, Parser<U>, Parser<V>> lift2(final BiFunction<T, U, V> toLift) {
+        return (parser1, parser2) -> apply(apply(pure(a -> b -> toLift.apply(a, b)), parser1), parser2);
+    }
 
     public static <T, U> Parser<U> concat(final Parser<T> parser1, final Parser<U> parser2) {
         return input -> switch (parser1.parse(input)) {
@@ -128,24 +153,43 @@ public class Parsers {
         };
     }
 
-    public static Parser<Character> character(final Character expectedCharacter) {
+    public static Parser<Character> characterSatisfies(
+        final Predicate<Character> matcher,
+        final Function<Character, String> errorMessageMapper,
+        final Supplier<String> emptyInputError
+    ) {
         return input -> {
             if (input.isEmpty()) {
-                return new Failure<>("Expected '" + expectedCharacter + "' but got empty input");
+                return new Failure<>(emptyInputError.get());
             }
-            final char actualCharacter = input.charAt(0);
-            if (actualCharacter != expectedCharacter) {
-                return new Failure<>("Expected '" + expectedCharacter + "' but got '" + actualCharacter + "'");
+            final char character = input.charAt(0);
+            if (!matcher.test(character)) {
+                return new Failure<>(errorMessageMapper.apply(character));
             }
 
-            return new Success<>(expectedCharacter, input.substring(1));
+            return new Success<>(character, input.substring(1));
         };
     }
 
+    public static Parser<Character> character(final Character expectedCharacter) {
+        return characterSatisfies(expectedCharacter::equals,
+            c -> "Expected '" + expectedCharacter + "' but got '" + c +"'",
+            () -> "Expected '" + expectedCharacter + "' but got empty input"
+        );
+    }
+
     public static Parser<Character> anyCharacterFrom(final List<Character> chars) {
-        return anyOf(chars.stream()
-            .map(Parsers::character)
-            .collect(Collectors.toList()));
+        return characterSatisfies(chars::contains,
+            c -> "Unexpected character '" + c + "', expected one of " + chars,
+            () -> "Expected one of " + chars + " but got empty input"
+        );
+    }
+
+    public static Parser<Character> whitespaceCharacter() {
+        return characterSatisfies(Character::isWhitespace,
+            c -> "Expected '" + c + "' to be a whitespace character",
+            () -> "Expected a whitespace character but got empty input"
+        );
     }
 
     public static Parser<String> string(final String string) {

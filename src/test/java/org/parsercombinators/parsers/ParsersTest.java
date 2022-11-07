@@ -2,11 +2,12 @@ package org.parsercombinators.parsers;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.parsercombinators.data.result.Failure;
 import org.parsercombinators.data.Pair;
 import org.parsercombinators.data.Parser;
+import org.parsercombinators.data.result.Failure;
 import org.parsercombinators.data.result.Result;
 import org.parsercombinators.data.result.Success;
+import org.parsercombinators.utils.Utils;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -29,6 +30,7 @@ import static org.parsercombinators.parsers.Parsers.noEmitSurrounding;
 import static org.parsercombinators.parsers.Parsers.or;
 import static org.parsercombinators.parsers.Parsers.string;
 import static org.parsercombinators.parsers.Parsers.transpose;
+import static org.parsercombinators.parsers.Parsers.whitespaceCharacter;
 
 class ParsersTest {
 
@@ -267,7 +269,13 @@ class ParsersTest {
                 "anyCharacterFromFailure",
                 anyCharacterFrom(List.of('a', 'b', 'c')),
                 "daaaa",
-                new Failure<>("Expected 'c' but got 'd'")
+                new Failure<>("Unexpected character 'd', expected one of [a, b, c]")
+            ),
+            new TestCase<>(
+                "anyCharacterFromEmptyFailure",
+                anyCharacterFrom(List.of('a', 'b', 'c')),
+                "",
+                new Failure<>("Expected one of [a, b, c] but got empty input")
             ),
             new TestCase<>(
                 "string",
@@ -286,6 +294,30 @@ class ParsersTest {
                 string("ababab"),
                 "abcabcabc",
                 new Failure<>("Expected 'a' but got 'c'")
+            ),
+            new TestCase<>(
+                "whitespaceCharacter",
+                whitespaceCharacter(),
+                " ab",
+                new Success<>(' ', "ab")
+            ),
+            new TestCase<>(
+                "whitespaceCharacterFailure",
+                whitespaceCharacter(),
+                "ab",
+                new Failure<>("Expected 'a' to be a whitespace character")
+            ),
+            new TestCase<>(
+                "whitespaceCharacterFailureEmpty",
+                whitespaceCharacter(),
+                "",
+                new Failure<>("Expected a whitespace character but got empty input")
+            ),
+            new TestCase<>(
+                "manyWhitespace",
+                map(many(whitespaceCharacter()), Utils::charsToString),
+                " \r\n\t\fab",
+                new Success<>(" \r\n\t\f", "ab")
             )
         );
     }
