@@ -22,14 +22,13 @@ import static org.parsercombinators.parsers.Parsers.anyOf;
 import static org.parsercombinators.parsers.Parsers.character;
 import static org.parsercombinators.parsers.Parsers.characterAsString;
 import static org.parsercombinators.parsers.Parsers.concat;
-import static org.parsercombinators.parsers.Parsers.concatEmitPair;
+import static org.parsercombinators.parsers.Parsers.foldRight;
 import static org.parsercombinators.parsers.Parsers.many;
 import static org.parsercombinators.parsers.Parsers.many1;
 import static org.parsercombinators.parsers.Parsers.map;
 import static org.parsercombinators.parsers.Parsers.nTimes;
-import static org.parsercombinators.parsers.Parsers.noEmitLeft;
-import static org.parsercombinators.parsers.Parsers.noEmitRight;
-import static org.parsercombinators.parsers.Parsers.noEmitSurrounding;
+import static org.parsercombinators.parsers.Parsers.foldLeft;
+import static org.parsercombinators.parsers.Parsers.surrounding;
 import static org.parsercombinators.parsers.Parsers.notCharacter;
 import static org.parsercombinators.parsers.Parsers.optional;
 import static org.parsercombinators.parsers.Parsers.or;
@@ -50,25 +49,25 @@ class ParsersTest {
         return Stream.of(
             new TestCase<>(
                 "concatCharacters",
-                concat(character('a'), character('b')),
+                foldRight(character('a'), character('b')),
                 "abaaa",
                 new Success<>('b', "aaa")
             ),
             new TestCase<>(
                 "concatCharactersFailure",
-                concat(character('a'), character('b')),
+                foldRight(character('a'), character('b')),
                 "a",
                 new Failure<>("Expected 'b' but got empty input")
             ),
             new TestCase<>(
                 "concatEmitPairCharacters",
-                concatEmitPair(character('a'), character('b')),
+                concat(character('a'), character('b')),
                 "abaaa",
                 new Success<>(new Pair<>('a', 'b'), "aaa")
             ),
             new TestCase<>(
                 "concatEmitPairCharactersFailure",
-                concatEmitPair(character('a'), character('b')),
+                concat(character('a'), character('b')),
                 "a",
                 new Failure<>("Expected 'b' but got empty input")
             ),
@@ -208,7 +207,7 @@ class ParsersTest {
                 "nTimesCharacters",
                 nTimes(character('a'), 5),
                 "aaaaabb",
-                new Success<>('a', "bb")
+                new Success<>(List.of('a', 'a', 'a', 'a', 'a'), "bb")
             ),
             new TestCase<>(
                 "nTimesCharactersShortFailure",
@@ -223,50 +222,38 @@ class ParsersTest {
                 new Failure<>("Expected 'a' but got 'b'")
             ),
             new TestCase<>(
-                "noEmitLeftCharacters",
-                noEmitLeft(character('b'), character('a')),
-                "ababab",
-                new Success<>('b', "abab")
-            ),
-            new TestCase<>(
-                "noEmitLeftCharactersFailure",
-                noEmitLeft(character('b'), character('a')),
-                "cbabab",
-                new Failure<>("Expected 'a' but got 'c'")
-            ),
-            new TestCase<>(
                 "noEmitRightCharacters",
-                noEmitRight(character('a'), character('b')),
+                foldLeft(character('a'), character('b')),
                 "ababab",
                 new Success<>('a', "abab")
             ),
             new TestCase<>(
                 "noEmitRightCharactersFailure",
-                noEmitRight(character('a'), character('b')),
+                foldLeft(character('a'), character('b')),
                 "acabab",
                 new Failure<>("Expected 'b' but got 'c'")
             ),
             new TestCase<>(
                 "noEmitSurroundingCharacters",
-                noEmitSurrounding(character('a'), character('"')),
+                Parsers.surrounding(character('a'), character('"')),
                 "\"a\"abab",
                 new Success<>('a', "abab")
             ),
             new TestCase<>(
                 "noEmitSurroundingCharactersFailure",
-                noEmitSurrounding(character('a'), character('"')),
+                Parsers.surrounding(character('a'), character('"')),
                 "a\"abab",
                 new Failure<>("Expected '\"' but got 'a'")
             ),
             new TestCase<>(
                 "noEmitSurroundingOverloadCharacters",
-                noEmitSurrounding(character('a'), character('<'), character('>')),
+                surrounding(character('a'), character('<'), character('>')),
                 "<a>abab",
                 new Success<>('a', "abab")
             ),
             new TestCase<>(
                 "noEmitSurroundingOverloadCharactersFailure",
-                noEmitSurrounding(character('a'), character('<'), character('>')),
+                surrounding(character('a'), character('<'), character('>')),
                 ">a>abab",
                 new Failure<>("Expected '<' but got '>'")
             ),
@@ -380,7 +367,7 @@ class ParsersTest {
             ),
             new TestCase<>(
                 "anyIntegerTwice",
-                concatEmitPair(anyInteger(), anyInteger()),
+                concat(anyInteger(), anyInteger()),
                 "187654329-101010cde",
                 new Success<>(new Pair<>(187654329, -101010), "cde")
             ),
@@ -392,7 +379,7 @@ class ParsersTest {
             ),
             new TestCase<>(
                 "quotedInteger",
-                noEmitSurrounding(anyInteger(), character('"')),
+                Parsers.surrounding(anyInteger(), character('"')),
                 "\"54321\"asdf",
                 new Success<>(54321, "asdf")
             )

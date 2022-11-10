@@ -27,8 +27,8 @@ public class Parsers {
         return input -> new Success<>(value, input);
     }
 
-    public static <T, U> Parser<U> apply(final Parser<Function<T, U>> parserFunction, final Parser<T> parserValue) {
-        return map(concatEmitPair(parserFunction, parserValue), pair -> pair.left().apply(pair.right()));
+    public static <T, U> Parser<U> apply(final Parser<T> parserValue, final Parser<Function<T, U>> parserFunction) {
+        return map(concat(parserFunction, parserValue), pair -> pair.left().apply(pair.right()));
     }
 
     public static <T, U> Parser<U> bind(final Parser<T> parser, final Function<T, Parser<U>> function) {
@@ -38,28 +38,45 @@ public class Parsers {
         };
     }
 
-    public static <T, U> Function<Parser<T>, Parser<U>> lift(final Function<T, U> toLift) {
-        return parser1 -> apply(pure(toLift), parser1);
-    }
-
-    public static <T, U, V> BiFunction<Parser<T>, Parser<U>, Parser<V>> lift2(final BiFunction<T, U, V> toLift) {
-        return (parser1, parser2) -> apply(apply(pure(a -> b -> toLift.apply(a, b)), parser1), parser2);
-    }
-
-    public static <T, U> Parser<U> concat(final Parser<T> parser1, final Parser<U> parser2) {
-        return input -> switch (parser1.parse(input)) {
-            case Success<T> success -> parser2.parse(success.remaining());
+    public static <T, U> Parser<U> map(final Parser<T> parser, final Function<T, U> function) {
+        return input -> switch (parser.parse(input)) {
+            case Success<T> success -> new Success<>(function.apply(success.match()), success.remaining());
             case Failure<T> failure -> new Failure<>(failure.message());
         };
     }
 
-    public static <T, U> Parser<Pair<T, U>> concatEmitPair(final Parser<T> parser1, final Parser<U> parser2) {
-        return input -> switch (parser1.parse(input)) {
-            case Success<T> success1 -> switch (parser2.parse(success1.remaining())) {
-                case Success<U> success2 -> new Success<>(new Pair<>(success1.match(), success2.match()), success2.remaining());
-                case Failure<U> failure2 -> new Failure<>(failure2.message());
+    public static <T, U> Function<Parser<T>, Parser<U>> lift(final Function<T, U> toLift) {
+        return parser1 -> apply(parser1, pure(toLift));
+    }
+
+    public static <T, U, V> BiFunction<Parser<T>, Parser<U>, Parser<V>> lift2(final BiFunction<T, U, V> toLift) {
+        return (parser1, parser2) -> apply(parser2, apply(parser1, pure(a -> b -> toLift.apply(a, b))));
+    }
+
+    public static <T, U> Parser<U> foldRight(final Parser<T> parserLeft, final Parser<U> parserRight) {
+        return input -> switch (parserLeft.parse(input)) {
+            case Success<T> success -> parserRight.parse(success.remaining());
+            case Failure<T> failure -> new Failure<>(failure.message());
+        };
+    }
+
+    public static <T, U> Parser<T> foldLeft(final Parser<T> parserLeft, final Parser<U> parserRight) {
+        return input -> switch (parserLeft.parse(input)) {
+            case Success<T> successLeft -> switch (parserRight.parse(successLeft.remaining())) {
+                case Success<U> successRight -> new Success<>(successLeft.match(), successRight.remaining());
+                case Failure<U> failureRight -> new Failure<>(failureRight.message());
             };
-            case Failure<T> failure1 -> new Failure<>(failure1.message());
+            case Failure<T> failureLeft -> new Failure<>(failureLeft.message());
+        };
+    }
+
+    public static <T, U> Parser<Pair<T, U>> concat(final Parser<T> parserLeft, final Parser<U> parserRight) {
+        return input -> switch (parserLeft.parse(input)) {
+            case Success<T> successLeft -> switch (parserRight.parse(successLeft.remaining())) {
+                case Success<U> successRight -> new Success<>(new Pair<>(successLeft.match(), successRight.match()), successRight.remaining());
+                case Failure<U> failureRight -> new Failure<>(failureRight.message());
+            };
+            case Failure<T> failureLeft -> new Failure<>(failureLeft.message());
         };
     }
 
@@ -83,8 +100,7 @@ public class Parsers {
 
     public static <T> Parser<T> anyOf(final List<Parser<T>> parsers) {
         return parsers.stream()
-            .reduce(Parsers::or)
-            .orElseThrow();
+            .reduce(input -> new Failure<>("anyOf called with empty list of parsers"), Parsers::or);
     }
 
     public static <T> Parser<List<T>> transpose(final List<Parser<T>> parsers) {
@@ -101,14 +117,7 @@ public class Parsers {
                     return new Failure<>(failure.message());
                 }
             }
-            return new Success<>(out, remaining);
-        };
-    }
-
-    public static <T, U> Parser<U> map(final Parser<T> parser, final Function<T, U> function) {
-        return input -> switch (parser.parse(input)) {
-            case Success<T> success -> new Success<>(function.apply(success.match()), success.remaining());
-            case Failure<T> failure -> new Failure<>(failure.message());
+            return new Success<>(out.stream().toList(), remaining);
         };
     }
 
@@ -126,38 +135,16 @@ public class Parsers {
         };
     }
 
-    public static <T> Parser<T> nTimes(final Parser<T> parser, final int n) {
-        return nCopies(n, parser).stream()
-            .reduce(Parsers::concat)
-            .orElseThrow();
+    public static <T> Parser<List<T>> nTimes(final Parser<T> parser, final int n) {
+        return transpose(nCopies(n, parser));
     }
 
-    public static <T, U> Parser<T> noEmitLeft(final Parser<T> parser, final Parser<U> left) {
-        return input -> switch (left.parse(input)) {
-            case Success<U> success -> parser.parse(success.remaining());
-            case Failure<U> failure -> new Failure<>(failure.message());
-        };
+    public static <T, U> Parser<T> surrounding(final Parser<T> parser, final Parser<U> surrounding) {
+        return surrounding(parser, surrounding, surrounding);
     }
 
-    public static <T, U> Parser<T> noEmitRight(final Parser<T> parser, final Parser<U> right) {
-        return input -> switch (parser.parse(input)) {
-            case Success<T> success -> switch (right.parse(success.remaining())) {
-                case Success<U> successR -> new Success<>(success.match(), successR.remaining());
-                case Failure<U> failureR -> new Failure<>(failureR.message());
-            };
-            case Failure<T> failure -> new Failure<>(failure.message());
-        };
-    }
-
-    public static <T, U> Parser<T> noEmitSurrounding(final Parser<T> parser, final Parser<U> surrounding) {
-        return noEmitSurrounding(parser, surrounding, surrounding);
-    }
-
-    public static <T, U, V> Parser<T> noEmitSurrounding(final Parser<T> parser, final Parser<U> left, final Parser<V> right) {
-        return input -> switch (left.parse(input)) {
-            case Success<U> success -> noEmitRight(parser, right).parse(success.remaining());
-            case Failure<U> failure -> new Failure<>(failure.message());
-        };
+    public static <T, U, V> Parser<T> surrounding(final Parser<T> parser, final Parser<U> left, final Parser<V> right) {
+        return foldLeft(foldRight(left, parser), right);
     }
 
     public static Parser<Character> characterSatisfies(
@@ -225,7 +212,7 @@ public class Parsers {
     public static Parser<Integer> anyInteger() {
         final List<Character> numerals = List.of('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
 
-        final var signAndBody = concatEmitPair(
+        final var signAndBody = concat(
             optional(character('-')),
             or(characterAsString('0'), map(many1(anyCharacterFrom(numerals)), Utils::charsToString))
         );
