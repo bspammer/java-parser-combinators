@@ -11,9 +11,9 @@ import org.parsercombinators.utils.Utils;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.parsercombinators.parsers.Parsers.and;
 import static org.parsercombinators.parsers.Parsers.anyCharacterFrom;
@@ -22,17 +22,18 @@ import static org.parsercombinators.parsers.Parsers.anyOf;
 import static org.parsercombinators.parsers.Parsers.character;
 import static org.parsercombinators.parsers.Parsers.characterAsString;
 import static org.parsercombinators.parsers.Parsers.concat;
+import static org.parsercombinators.parsers.Parsers.foldLeft;
 import static org.parsercombinators.parsers.Parsers.foldRight;
 import static org.parsercombinators.parsers.Parsers.many;
 import static org.parsercombinators.parsers.Parsers.many1;
 import static org.parsercombinators.parsers.Parsers.map;
 import static org.parsercombinators.parsers.Parsers.nTimes;
-import static org.parsercombinators.parsers.Parsers.foldLeft;
-import static org.parsercombinators.parsers.Parsers.surrounding;
+import static org.parsercombinators.parsers.Parsers.not;
 import static org.parsercombinators.parsers.Parsers.notCharacter;
 import static org.parsercombinators.parsers.Parsers.optional;
 import static org.parsercombinators.parsers.Parsers.or;
 import static org.parsercombinators.parsers.Parsers.string;
+import static org.parsercombinators.parsers.Parsers.surrounding;
 import static org.parsercombinators.parsers.Parsers.transpose;
 import static org.parsercombinators.parsers.Parsers.whitespaceCharacter;
 
@@ -45,8 +46,8 @@ class ParsersTest {
         Result<T> expectedResult
     ) {}
 
-    public static Stream<TestCase<?>> tests() {
-        return Stream.of(
+    public static List<TestCase<?>> tests() {
+        final List<TestCase<?>> tests = List.of(
             new TestCase<>(
                 "concatCharacters",
                 foldRight(character('a'), character('b')),
@@ -114,6 +115,18 @@ class ParsersTest {
                 new Success<>('a', "bbb")
             ),
             new TestCase<>(
+                "notCombinatorCharacters",
+                not(character('a'), c -> "Expected not 'a' but got 'a'"),
+                "baaa",
+                new Success<>(null, "baaa")
+            ),
+            new TestCase<>(
+                "notCombinatorCharactersFailure",
+                not(character('a'), c -> "Expected not 'a' but got 'a'"),
+                "aaaa",
+                new Failure<>("Expected not 'a' but got 'a'")
+            ),
+            new TestCase<>(
                 "andCharactersFailure",
                 and(character('a'), character('b')),
                 "aaaa",
@@ -168,7 +181,7 @@ class ParsersTest {
                 new Failure<>("Expected 'a' but got 'b'")
             ),
             new TestCase<>(
-            "manyCharactersAll",
+                "manyCharactersAll",
                 many(character('a')),
                 "aaaaa",
                 new Success<>(List.of('a', 'a', 'a', 'a', 'a'), "")
@@ -235,13 +248,13 @@ class ParsersTest {
             ),
             new TestCase<>(
                 "noEmitSurroundingCharacters",
-                Parsers.surrounding(character('a'), character('"')),
+                surrounding(character('a'), character('"')),
                 "\"a\"abab",
                 new Success<>('a', "abab")
             ),
             new TestCase<>(
                 "noEmitSurroundingCharactersFailure",
-                Parsers.surrounding(character('a'), character('"')),
+                surrounding(character('a'), character('"')),
                 "a\"abab",
                 new Failure<>("Expected '\"' but got 'a'")
             ),
@@ -379,16 +392,19 @@ class ParsersTest {
             ),
             new TestCase<>(
                 "quotedInteger",
-                Parsers.surrounding(anyInteger(), character('"')),
+                surrounding(anyInteger(), character('"')),
                 "\"54321\"asdf",
                 new Success<>(54321, "asdf")
             )
         );
+        assertThat(tests.stream().map(TestCase::testName)).doesNotHaveDuplicates();
+
+        return tests;
     }
 
     @ParameterizedTest
     @MethodSource("tests")
-    <T> void runTests(final TestCase<T> testCase) {
+    <T> void tests(final TestCase<T> testCase) {
         final Result<T> result = testCase.parser.parse(testCase.input);
         assertEquals(testCase.expectedResult, result, testCase.testName);
     }

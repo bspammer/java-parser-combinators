@@ -19,7 +19,6 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.nCopies;
-import static java.util.function.Predicate.not;
 
 public class Parsers {
 
@@ -91,6 +90,16 @@ public class Parsers {
         return input -> switch (parser1.parse(input)) {
             case Success<T> ignored -> parser2.parse(input);
             case Failure<T> failure -> failure;
+        };
+    }
+
+    public static <T> Parser<Void> not(
+        final Parser<T> parser,
+        final Function<T, String> failureMessageMapper
+    ) {
+        return input -> switch (parser.parse(input)) {
+            case Success<T> success -> new Failure<>(failureMessageMapper.apply(success.match()));
+            case Failure<T> ignored -> new Success<>(null, input);
         };
     }
 
@@ -173,7 +182,7 @@ public class Parsers {
     }
 
     public static Parser<Character> notCharacter(final Character excludedCharacter) {
-        return characterSatisfies(not(excludedCharacter::equals),
+        return characterSatisfies(Predicate.not(excludedCharacter::equals),
             c -> "Expected any character except '" + excludedCharacter + "' but got it",
             () -> "Expected any character except '" + excludedCharacter + "' but got empty input"
         );
