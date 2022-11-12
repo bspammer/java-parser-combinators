@@ -35,6 +35,7 @@ import static org.parsercombinators.parsers.Parsers.or;
 import static org.parsercombinators.parsers.Parsers.string;
 import static org.parsercombinators.parsers.Parsers.surrounding;
 import static org.parsercombinators.parsers.Parsers.transpose;
+import static org.parsercombinators.parsers.Parsers.untilCharacter;
 import static org.parsercombinators.parsers.Parsers.whitespaceCharacter;
 
 class ParsersTest {
@@ -347,6 +348,18 @@ class ParsersTest {
                 string("ababab"),
                 "abcabcabc",
                 new Failure<>("Expected 'a' but got 'c'")
+            ),
+            new TestCase<>(
+                "untilCharacter",
+                untilCharacter('\n'),
+                "some long string then\nanother one",
+                new Success<>("some long string then", "another one")
+            ),
+            new TestCase<>(
+                "untilCharacterFailure",
+                untilCharacter('\n'),
+                "some long string then",
+                new Failure<>("Expected '\n' but got empty input")
             ),
             new TestCase<>(
                 "whitespaceCharacter",

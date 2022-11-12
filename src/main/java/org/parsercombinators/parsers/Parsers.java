@@ -199,6 +199,12 @@ public class Parsers {
         );
     }
 
+    public static Parser<String> untilCharacter(final Character character) {
+        return map(
+            foldLeft(many(notCharacter(character)), character(character)), Utils::charsToString
+        );
+    }
+
     public static Parser<Character> whitespaceCharacter() {
         return characterSatisfies(Character::isWhitespace,
             c -> "Expected a whitespace character but got '" + c + "'",
@@ -213,8 +219,7 @@ public class Parsers {
                     .mapToObj(c -> (char) c)
                     .map(Parsers::character)
                     .toList()
-            ),
-            Utils::charsToString
+            ), Utils::charsToString
         );
     }
 
