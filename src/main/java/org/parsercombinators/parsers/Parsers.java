@@ -31,7 +31,7 @@ public class Parsers {
     }
 
     public static <T, U> Parser<U> bind(final Parser<T> parser, final Function<T, Parser<U>> function) {
-        return input -> switch(parser.parse(input)) {
+        return input -> switch (parser.parse(input)) {
             case Success<T> success -> function.apply(success.match()).parse(success.remaining());
             case Failure<T> failure -> new Failure<>(failure.message());
         };
@@ -176,7 +176,7 @@ public class Parsers {
 
     public static Parser<Character> character(final Character expectedCharacter) {
         return characterSatisfies(expectedCharacter::equals,
-            c -> "Expected '" + expectedCharacter + "' but got '" + c +"'",
+            c -> "Expected '" + expectedCharacter + "' but got '" + c + "'",
             () -> "Expected '" + expectedCharacter + "' but got empty input"
         );
     }
