@@ -171,13 +171,13 @@ class ParsersTest {
             ),
             new TestCase<>(
                 "mapCharactersToNumeric",
-                map(character('a'), Character::getNumericValue),
+                map(Character::getNumericValue, character('a')),
                 "abbb",
                 new Success<>(10, "bbb")
             ),
             new TestCase<>(
                 "mapCharactersToNumericFailure",
-                map(character('a'), Character::getNumericValue),
+                map(Character::getNumericValue, character('a')),
                 "bbbb",
                 new Failure<>("Expected 'a' but got 'b'")
             ),
@@ -381,7 +381,7 @@ class ParsersTest {
             ),
             new TestCase<>(
                 "manyWhitespace",
-                map(many(whitespaceCharacter()), Utils::charsToString),
+                map(Utils::charsToString, many(whitespaceCharacter())),
                 " \r\n\t\fab",
                 new Success<>(" \r\n\t\f", "ab")
             ),

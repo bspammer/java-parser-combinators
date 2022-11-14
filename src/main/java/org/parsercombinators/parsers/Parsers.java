@@ -26,30 +26,30 @@ public class Parsers {
         return input -> new Success<>(value, input);
     }
 
-    public static <T, U> Parser<U> apply(final Parser<T> parserValue, final Parser<Function<T, U>> parserFunction) {
-        return map(concat(parserFunction, parserValue), pair -> pair.left().apply(pair.right()));
+    public static <T, U> Parser<U> apply(final Parser<Function<T, U>> function, final Parser<T> parser) {
+        return map(pair -> pair.left().apply(pair.right()), concat(function, parser));
     }
 
-    public static <T, U> Parser<U> bind(final Parser<T> parser, final Function<T, Parser<U>> function) {
+    public static <T, U> Parser<U> bind(final Function<T, Parser<U>> function, final Parser<T> parser) {
         return input -> switch (parser.parse(input)) {
             case Success<T> success -> function.apply(success.match()).parse(success.remaining());
             case Failure<T> failure -> new Failure<>(failure.message());
         };
     }
 
-    public static <T, U> Parser<U> map(final Parser<T> parser, final Function<T, U> function) {
+    public static <T, U> Parser<U> map(final Function<T, U> function, final Parser<T> parser) {
         return input -> switch (parser.parse(input)) {
             case Success<T> success -> new Success<>(function.apply(success.match()), success.remaining());
             case Failure<T> failure -> new Failure<>(failure.message());
         };
     }
 
-    public static <T, U> Function<Parser<T>, Parser<U>> lift(final Function<T, U> toLift) {
-        return parser1 -> apply(parser1, pure(toLift));
+    public static <T, U> Function<Parser<T>, Parser<U>> lift(final Function<T, U> function) {
+        return parser1 -> apply(pure(function), parser1);
     }
 
-    public static <T, U, V> BiFunction<Parser<T>, Parser<U>, Parser<V>> lift2(final BiFunction<T, U, V> toLift) {
-        return (parser1, parser2) -> apply(parser2, apply(parser1, pure(a -> b -> toLift.apply(a, b))));
+    public static <T, U, V> BiFunction<Parser<T>, Parser<U>, Parser<V>> lift2(final BiFunction<T, U, V> function) {
+        return (parser1, parser2) -> apply(apply(pure(a -> b -> function.apply(a, b)), parser1), parser2);
     }
 
     public static <T, U> Parser<U> foldRight(final Parser<T> parserLeft, final Parser<U> parserRight) {
@@ -104,7 +104,7 @@ public class Parsers {
     }
 
     public static <T> Parser<Optional<T>> optional(final Parser<T> parser) {
-        return or(map(parser, Optional::of), pure(Optional.empty()));
+        return or(map(Optional::of, parser), pure(Optional.empty()));
     }
 
     public static <T> Parser<T> anyOf(final List<Parser<T>> parsers) {
@@ -189,7 +189,7 @@ public class Parsers {
     }
 
     public static Parser<String> characterAsString(final Character expectedCharacter) {
-        return map(character(expectedCharacter), Objects::toString);
+        return map(Objects::toString, character(expectedCharacter));
     }
 
     public static Parser<Character> anyCharacterFrom(final List<Character> characters) {
@@ -201,7 +201,7 @@ public class Parsers {
 
     public static Parser<String> untilCharacter(final Character character) {
         return map(
-            foldLeft(many(notCharacter(character)), character(character)), Utils::charsToString
+            Utils::charsToString, foldLeft(many(notCharacter(character)), character(character))
         );
     }
 
@@ -214,12 +214,12 @@ public class Parsers {
 
     public static Parser<String> string(final String string) {
         return map(
-            transpose(
+            Utils::charsToString, transpose(
                 string.chars()
                     .mapToObj(c -> (char) c)
                     .map(Parsers::character)
                     .toList()
-            ), Utils::charsToString
+            )
         );
     }
 
@@ -228,12 +228,12 @@ public class Parsers {
 
         final var signAndBody = concat(
             optional(character('-')),
-            or(characterAsString('0'), map(many1(anyCharacterFrom(numerals)), Utils::charsToString))
+            or(characterAsString('0'), map(Utils::charsToString, many1(anyCharacterFrom(numerals))))
         );
-        return map(signAndBody, pair -> {
+        return map(pair -> {
             final int integer = Integer.parseInt(pair.right());
             return pair.left().map(ignored -> -integer).orElse(integer);
-        });
+        }, signAndBody);
     }
 
     private static <T> Success<List<T>> parseZeroOrMore(final Parser<T> parser, final Success<T> success) {

@@ -13,7 +13,7 @@ public interface Parser<T> {
     Result<T> parse(String input);
 
     default <U> Parser<U> map(Function<T, U> mapper) {
-        return Parsers.map(this, mapper);
+        return Parsers.map(mapper, this);
     }
 
     default <U> Parser<U> before(Parser<U> other) {
