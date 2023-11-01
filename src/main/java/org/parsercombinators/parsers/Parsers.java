@@ -236,6 +236,13 @@ public class Parsers {
         }, signAndBody);
     }
 
+    public static Parser<String> noMoreInput() {
+        return input -> switch (input) {
+            case "" -> new Success<>("", input);
+            default -> new Failure<>("Expected end of string but was non-empty");
+        };
+    }
+
     private static <T> Success<List<T>> parseZeroOrMore(final Parser<T> parser, final Success<T> success) {
         final String remainingInput = success.remaining();
         final Success<List<T>> result = switch (parser.parse(remainingInput)) {

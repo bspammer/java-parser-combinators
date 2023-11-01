@@ -37,6 +37,7 @@ import static org.parsercombinators.parsers.Parsers.surrounding;
 import static org.parsercombinators.parsers.Parsers.transpose;
 import static org.parsercombinators.parsers.Parsers.untilCharacter;
 import static org.parsercombinators.parsers.Parsers.whitespaceCharacter;
+import static org.parsercombinators.parsers.Parsers.noMoreInput;
 
 class ParsersTest {
 
@@ -408,6 +409,18 @@ class ParsersTest {
                 surrounding(anyInteger(), character('"')),
                 "\"54321\"asdf",
                 new Success<>(54321, "asdf")
+            ),
+            new TestCase<>(
+                "noMoreInput",
+                noMoreInput(),
+                "",
+                new Success<>("", "")
+            ),
+            new TestCase<>(
+                "noMoreInputFailure",
+                noMoreInput(),
+                "hello",
+                new Failure<>("Expected end of string but was non-empty")
             )
         );
         assertThat(tests.stream().map(TestCase::testName)).doesNotHaveDuplicates();
